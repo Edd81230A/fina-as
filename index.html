@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Casa Pro</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-fundo: #121214;
+            --bg-cartao: #202024;
+            --laranja: #FF7A00;
+            --laranja-hover: #E06C00;
+            --verde: #00B37E;
+            --vermelho: #F75A68;
+            --texto-claro: #E1E1E6;
+            --texto-cinza: #8D8D99;
+            --borda: #323238;
+            --roxo: #8257E5;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-fundo); color: var(--texto-claro); padding: 20px; padding-bottom: 80px; }
+
+        /* CABEÇALHO E NAVEGAÇÃO */
+        header { display: flex; justify-content: space-between; align-items: center; max-width: 1000px; margin: 0 auto 20px; }
+        .logo { color: var(--laranja); font-size: 24px; font-weight: bold; }
+        .botoes-topo button { padding: 10px 15px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; color: white; margin-left: 10px; transition: 0.2s; }
+        .btn-receita { background-color: var(--verde); }
+        .btn-despesa { background-color: var(--vermelho); }
+        .btn-receita:hover, .btn-despesa:hover { filter: brightness(0.9); }
+
+        .tabs { display: flex; gap: 10px; max-width: 1000px; margin: 0 auto 30px; border-bottom: 2px solid var(--borda); padding-bottom: 10px; overflow-x: auto; }
+        .tab-btn { background: transparent; border: none; color: var(--texto-cinza); font-size: 16px; font-weight: 600; padding: 10px 20px; cursor: pointer; border-radius: 6px; transition: 0.2s; white-space: nowrap; }
+        .tab-btn.ativo { background: var(--bg-cartao); color: var(--laranja); }
+        .tab-btn:hover:not(.ativo) { color: var(--texto-claro); }
+
+        .tab-content { display: none; max-width: 1000px; margin: 0 auto; animation: fadeIn 0.3s; }
+        .tab-content.ativo { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* CARDS */
+        .resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .card { background: var(--bg-cartao); padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); position: relative; overflow: hidden; }
+        .card header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; color: var(--texto-cinza); font-size: 14px; }
+        .card h2 { font-size: 28px; font-weight: bold; }
+        .card.total { background: var(--laranja); color: white; }
+        .card.total header { color: rgba(255,255,255,0.8); }
+
+        /* GRÁFICOS E TABELAS */
+        .grid-dashboard { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+        @media (max-width: 768px) { .grid-dashboard { grid-template-columns: 1fr; } }
+        
+        .caixa { background: var(--bg-cartao); padding: 20px; border-radius: 8px; }
+        .caixa h3 { margin-bottom: 15px; font-size: 16px; color: var(--texto-cinza); display: flex; justify-content: space-between; }
+        
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 12px 10px; border-bottom: 1px solid var(--borda); }
+        th { color: var(--texto-cinza); font-weight: normal; font-size: 14px; }
+        .valor-positivo { color: var(--verde); font-weight: bold; }
+        .valor-negativo { color: var(--vermelho); font-weight: bold; }
+        .btn-acao { background: transparent; border: none; color: var(--texto-cinza); cursor: pointer; font-size: 16px; padding: 5px; }
+        .btn-acao:hover { color: var(--vermelho); }
+
+        .tag-categoria { color: var(--texto-cinza); border: 1px solid var(--borda); padding: 3px 8px; border-radius: 4px; font-size: 12px; }
+        .tag-fixo { background-color: var(--roxo); color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 10px; }
+
+        /* CONTROLES DE HISTÓRICO */
+        .controles-historico { display: flex; gap: 15px; margin-bottom: 20px; align-items: center; background: var(--bg-cartao); padding: 15px; border-radius: 8px; }
+        select, input { padding: 10px; border-radius: 6px; border: 1px solid var(--borda); background: var(--bg-fundo); color: var(--texto-claro); font-size: 15px; outline: none; }
+        
+        /* MODAL */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 999; }
+        .modal { background: var(--bg-cartao); padding: 30px; border-radius: 8px; width: 100%; max-width: 420px; }
+        .grupo { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: var(--texto-cinza); font-size: 14px; }
+        .modal input, .modal select { width: 100%; }
+        .botoes-modal { display: flex; gap: 10px; margin-top: 25px; }
+        .btn-salvar { background: var(--laranja); color: white; border: none; padding: 12px; border-radius: 6px; flex: 1; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-salvar:hover { background: var(--laranja-hover); }
+        .btn-cancelar { background: transparent; color: var(--texto-claro); border: 1px solid var(--borda); padding: 12px; border-radius: 6px; flex: 1; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo"><i class="fa-solid fa-wallet"></i> Contas de Casa</div>
+        <div class="botoes-topo">
+            <button class="btn-receita" onclick="abrirModalTransacao('receita')"><i class="fa-solid fa-arrow-up"></i> Receita</button>
+            <button class="btn-despesa" onclick="abrirModalTransacao('despesa')"><i class="fa-solid fa-arrow-down"></i> Despesa</button>
+        </div>
+    </header>
+
+    <div class="tabs">
+        <button class="tab-btn ativo" onclick="mudarAba('dashboard', this)"><i class="fa-solid fa-chart-pie"></i> Mês Atual</button>
+        <button class="tab-btn" onclick="mudarAba('historico', this)"><i class="fa-solid fa-calendar-days"></i> Histórico</button>
+        <button class="tab-btn" onclick="mudarAba('fixos', this)"><i class="fa-solid fa-clock-rotate-left"></i> Lançamentos Fixos</button>
+    </div>
+
+    <div id="dashboard" class="tab-content ativo">
+        <section class="resumo">
+            <div class="card">
+                <header><span>Entradas (Mês Atual)</span><i class="fa-regular fa-circle-up" style="color: var(--verde)"></i></header>
+                <h2 id="dash-receitas">R$ 0,00</h2>
+            </div>
+            <div class="card">
+                <header><span>Saídas (Mês Atual)</span><i class="fa-regular fa-circle-down" style="color: var(--vermelho)"></i></header>
+                <h2 id="dash-despesas">R$ 0,00</h2>
+            </div>
+            <div class="card total">
+                <header><span>Saldo do Mês</span><i class="fa-solid fa-dollar-sign"></i></header>
+                <h2 id="dash-saldo">R$ 0,00</h2>
+            </div>
+        </section>
+
+        <section class="grid-dashboard">
+            <div class="caixa">
+                <h3>Despesas por Categoria (Mês)</h3>
+                <canvas id="grafico-dashboard"></canvas>
+            </div>
+            <div class="caixa">
+                <h3>Lançamentos deste Mês</h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Descrição</th>
+                                <th>Categoria</th>
+                                <th>Data</th>
+                                <th>Valor</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-dashboard"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div id="historico" class="tab-content">
+        <div class="controles-historico">
+            <label style="margin: 0; color: white; font-weight: bold;"><i class="fa-solid fa-filter"></i> Filtrar por Mês:</label>
+            <input type="month" id="filtro-mes-ano" onchange="renderizarHistorico()">
+        </div>
+        
+        <section class="resumo" style="grid-template-columns: 1fr 1fr 1fr;">
+            <div class="card" style="padding: 15px;">
+                <header style="margin-bottom: 5px;"><span>Entradas</span></header>
+                <h2 id="hist-receitas" style="font-size: 20px; color: var(--verde);">R$ 0,00</h2>
+            </div>
+            <div class="card" style="padding: 15px;">
+                <header style="margin-bottom: 5px;"><span>Saídas</span></header>
+                <h2 id="hist-despesas" style="font-size: 20px; color: var(--vermelho);">R$ 0,00</h2>
+            </div>
+            <div class="card" style="padding: 15px;">
+                <header style="margin-bottom: 5px;"><span>Balanço</span></header>
+                <h2 id="hist-saldo" style="font-size: 20px;">R$ 0,00</h2>
+            </div>
+        </section>
+
+        <div class="caixa">
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Descrição</th>
+                            <th>Categoria</th>
+                            <th>Valor</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-historico"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="fixos" class="tab-content">
+        <div class="caixa" style="margin-bottom: 20px; background: rgba(130, 87, 229, 0.1); border: 1px solid var(--roxo);">
+            <h3 style="color: var(--roxo); margin-bottom: 5px;"><i class="fa-solid fa-robot"></i> Piloto Automático</h3>
+            <p style="font-size: 14px; color: var(--texto-cinza);">Cadastre contas que repetem todo mês. O sistema irá gerá-las automaticamente no dia 1º de cada mês.</p>
+        </div>
+
+        <button class="btn-salvar" style="width: auto; margin-bottom: 20px;" onclick="abrirModalFixo()">
+            <i class="fa-solid fa-plus"></i> Novo Lançamento Fixo
+        </button>
+
+        <div class="caixa">
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Dia Geração</th>
+                            <th>Descrição</th>
+                            <th>Categoria</th>
+                            <th>Tipo</th>
+                            <th>Valor</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-fixos"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-transacao">
+        <div class="modal">
+            <h2 id="mt-titulo">Novo Lançamento</h2>
+            <form onsubmit="salvarTransacao(event)">
+                <input type="hidden" id="mt-tipo">
+                <div class="grupo">
+                    <label>Descrição</label>
+                    <input type="text" id="mt-desc" required autocomplete="off" placeholder="Ex: Conta da Vivo, Supermercado Mateus...">
+                </div>
+                <div class="grupo">
+                    <label>Valor (R$)</label>
+                    <input type="number" id="mt-valor" step="0.01" required placeholder="0.00">
+                </div>
+                <div class="grupo">
+                    <label>Data</label>
+                    <input type="date" id="mt-data" required>
+                </div>
+                <div class="grupo">
+                    <label>Categoria</label>
+                    <select id="mt-categoria" required></select>
+                </div>
+                <div class="botoes-modal">
+                    <button type="button" class="btn-cancelar" onclick="fecharModais()">Cancelar</button>
+                    <button type="submit" class="btn-salvar">Salvar no Mês</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-fixo">
+        <div class="modal">
+            <h2 style="color: var(--roxo)"><i class="fa-solid fa-clock-rotate-left"></i> Cadastrar Fixo</h2>
+            <form onsubmit="salvarFixo(event)">
+                <div class="grupo">
+                    <label>Tipo</label>
+                    <select id="mf-tipo" onchange="atualizarCategoriasFixas()" required>
+                        <option value="despesa">Despesa (Sai todo mês)</option>
+                        <option value="receita">Receita (Entra todo mês)</option>
+                    </select>
+                </div>
+                <div class="grupo">
+                    <label>Descrição</label>
+                    <input type="text" id="mf-desc" required autocomplete="off" placeholder="Ex: Salário, Internet, Investimentos (Inter)...">
+                </div>
+                <div class="grupo">
+                    <label>Valor Fixo (R$)</label>
+                    <input type="number" id="mf-valor" step="0.01" required placeholder="0.00">
+                </div>
+                <div class="grupo">
+                    <label>Categoria</label>
+                    <select id="mf-categoria" required></select>
+                </div>
+                <div class="botoes-modal">
+                    <button type="button" class="btn-cancelar" onclick="fecharModais()">Cancelar</button>
+                    <button type="submit" class="btn-salvar" style="background: var(--roxo);">Salvar Regra</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        /* ==============================================================
+           SISTEMA DE GERENCIAMENTO (DADOS, AUTOMAÇÃO E UI)
+        ============================================================== */
+        
+        // Categorias atualizadas (Investimentos como despesa também!)
+        const categoriasReceita = ['Salário', 'Investimentos', 'Bico', 'Rendimentos', 'Vendas', 'Outros'];
+        const categoriasDespesa = ['Contas (Água, Luz, Internet, Vivo)', 'Mercado (Mateus, etc.)', 'Investimentos (Inter, etc.)', 'Reserva de Emergência', 'Saúde/Farmácia', 'Combustível/Transporte', 'Saídas/Lazer', 'Aluguel/Moradia', 'Cartão de Crédito', 'Pix Transferência', 'Outros'];
+        // Bancos de Dados
+        let transacoes = JSON.parse(localStorage.getItem('casa_transacoes_v2')) || [];
+        let fixos = JSON.parse(localStorage.getItem('casa_fixos_v2')) || [];
+        
+        let graficoChart = null;
+        let dataAtualApp = new Date();
+
+        // Inicialização
+        window.onload = () => {
+            // Define o filtro do histórico para o mês atual por padrão
+            const mesAtualString = dataAtualApp.toISOString().substring(0, 7);
+            document.getElementById('filtro-mes-ano').value = mesAtualString;
+            
+            processarLancamentosFixos();
+            renderizarDashboard();
+            renderizarFixos();
+        };
+
+        // -------------------------------------------------------------
+        // AUTOMAÇÃO DE FIXOS (O Robô do App)
+        // -------------------------------------------------------------
+        function processarLancamentosFixos() {
+            const dataHoje = new Date();
+            const anoMesAtual = dataHoje.toISOString().substring(0, 7); // Ex: "2026-06"
+            const ultimoProcessamento = localStorage.getItem('casa_ultimo_proc_v2');
+
+            // Se for um mês novo, lança tudo de novo
+            if(ultimoProcessamento !== anoMesAtual && fixos.length > 0) {
+                fixos.forEach(item => {
+                    // Cria a transação para o dia 1º do mês atual
+                    const novaTransacao = {
+                        id: Math.random().toString(36).substring(2, 9),
+                        descricao: item.descricao,
+                        valor: item.valor,
+                        data: `${anoMesAtual}-01`,
+                        categoria: item.categoria,
+                        tipo: item.tipo,
+                        isFixo: true
+                    };
+                    transacoes.push(novaTransacao);
+                });
+                
+                localStorage.setItem('casa_transacoes_v2', JSON.stringify(transacoes));
+                localStorage.setItem('casa_ultimo_proc_v2', anoMesAtual);
+            }
+        }
+
+        // -------------------------------------------------------------
+        // FUNÇÕES DE UTILIDADE
+        // -------------------------------------------------------------
+        function formatarMoeda(valor) { return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+        function formatarData(dataString) { const [ano, mes, dia] = dataString.split('-'); return `${dia}/${mes}/${ano}`; }
+        
+        function mudarAba(abaId, botao) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('ativo'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('ativo'));
+            document.getElementById(abaId).classList.add('ativo');
+            botao.classList.add('ativo');
+            if(abaId === 'historico') renderizarHistorico();
+            if(abaId === 'dashboard') renderizarDashboard();
+        }
+
+        // -------------------------------------------------------------
+        // RENDERIZAÇÃO: DASHBOARD (MÊS ATUAL)
+        // -------------------------------------------------------------
+        function renderizarDashboard() {
+            const mesAtual = new Date().toISOString().substring(0, 7);
+            const transacoesMes = transacoes.filter(t => t.data.startsWith(mesAtual));
+            transacoesMes.sort((a,b) => new Date(b.data) - new Date(a.data));
+
+            let totRec = 0, totDesp = 0;
+            let categoriasGrafico = {};
+            const corpoTab = document.getElementById('tabela-dashboard');
+            corpoTab.innerHTML = '';
+
+            if(transacoesMes.length === 0) corpoTab.innerHTML = `<tr><td colspan="5" style="text-align:center;">Nenhum lançamento neste mês.</td></tr>`;
+
+            transacoesMes.forEach(t => {
+                if(t.tipo === 'receita') totRec += t.valor;
+                else {
+                    totDesp += t.valor;
+                    categoriasGrafico[t.categoria] = (categoriasGrafico[t.categoria] || 0) + t.valor;
+                }
+
+                const sinal = t.tipo === 'receita' ? '+' : '-';
+                const cor = t.tipo === 'receita' ? 'valor-positivo' : 'valor-negativo';
+                const tagFixo = t.isFixo ? `<span class="tag-fixo">FIXO</span>` : '';
+
+                corpoTab.innerHTML += `
+                    <tr>
+                        <td>${t.descricao} ${tagFixo}</td>
+                        <td><span class="tag-categoria">${t.categoria}</span></td>
+                        <td>${formatarData(t.data)}</td>
+                        <td class="${cor}">${sinal} ${formatarMoeda(t.valor)}</td>
+                        <td><button class="btn-acao" onclick="deletarTransacao('${t.id}')"><i class="fa-solid fa-trash"></i></button></td>
+                    </tr>
+                `;
+            });
+
+            const saldo = totRec - totDesp;
+            document.getElementById('dash-receitas').innerText = formatarMoeda(totRec);
+            document.getElementById('dash-despesas').innerText = formatarMoeda(totDesp);
+            document.getElementById('dash-saldo').innerText = formatarMoeda(saldo);
+            
+            atualizarGrafico(categoriasGrafico);
+        }
+
+        function atualizarGrafico(dados) {
+            const ctx = document.getElementById('grafico-dashboard');
+            if(graficoChart) graficoChart.destroy();
+            graficoChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels: Object.keys(dados), datasets: [{ data: Object.values(dados), backgroundColor: ['#FF7A00', '#F75A68', '#00B37E', '#8257E5', '#E1E1E6', '#FBA94C', '#04D361'], borderWidth: 0 }] },
+                options: { responsive: true, plugins: { legend: { position: 'right', labels: { color: '#E1E1E6' } } } }
+            });
+        }
+
+        // -------------------------------------------------------------
+        // RENDERIZAÇÃO: HISTÓRICO
+        // -------------------------------------------------------------
+        function renderizarHistorico() {
+            const mesSelecionado = document.getElementById('filtro-mes-ano').value; // Formato YYYY-MM
+            if(!mesSelecionado) return;
+
+            const historico = transacoes.filter(t => t.data.startsWith(mesSelecionado));
+            historico.sort((a,b) => new Date(b.data) - new Date(a.data));
+
+            let totRec = 0, totDesp = 0;
+            const corpoTab = document.getElementById('tabela-historico');
+            corpoTab.innerHTML = '';
+
+            if(historico.length === 0) corpoTab.innerHTML = `<tr><td colspan="5" style="text-align:center;">Sem registros neste mês.</td></tr>`;
+
+            historico.forEach(t => {
+                if(t.tipo === 'receita') totRec += t.valor; else totDesp += t.valor;
+                const sinal = t.tipo === 'receita' ? '+' : '-';
+                const cor = t.tipo === 'receita' ? 'valor-positivo' : 'valor-negativo';
+
+                corpoTab.innerHTML += `
+                    <tr>
+                        <td>${formatarData(t.data)}</td>
+                        <td>${t.descricao}</td>
+                        <td><span class="tag-categoria">${t.categoria}</span></td>
+                        <td class="${cor}">${sinal} ${formatarMoeda(t.valor)}</td>
+                        <td><button class="btn-acao" onclick="deletarTransacao('${t.id}')"><i class="fa-solid fa-trash"></i></button></td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('hist-receitas').innerText = formatarMoeda(totRec);
+            document.getElementById('hist-despesas').innerText = formatarMoeda(totDesp);
+            document.getElementById('hist-saldo').innerText = formatarMoeda(totRec - totDesp);
+            
+            // Colore o saldo de verde ou vermelho no histórico
+            const elSaldo = document.getElementById('hist-saldo');
+            elSaldo.style.color = (totRec - totDesp) >= 0 ? 'var(--verde)' : 'var(--vermelho)';
+        }
+
+        // -------------------------------------------------------------
+        // RENDERIZAÇÃO: FIXOS
+        // -------------------------------------------------------------
+        function renderizarFixos() {
+            const corpoTab = document.getElementById('tabela-fixos');
+            corpoTab.innerHTML = '';
+
+            if(fixos.length === 0) corpoTab.innerHTML = `<tr><td colspan="6" style="text-align:center;">Nenhuma regra automática cadastrada.</td></tr>`;
+
+            fixos.forEach(f => {
+                const cor = f.tipo === 'receita' ? 'var(--verde)' : 'var(--vermelho)';
+                const txtTipo = f.tipo === 'receita' ? 'Receita' : 'Despesa';
+                corpoTab.innerHTML += `
+                    <tr>
+                        <td>Dia 1º</td>
+                        <td><strong>${f.descricao}</strong></td>
+                        <td><span class="tag-categoria">${f.categoria}</span></td>
+                        <td style="color: ${cor}">${txtTipo}</td>
+                        <td style="color: ${cor}">${formatarMoeda(f.valor)}</td>
+                        <td><button class="btn-acao" onclick="deletarFixo('${f.id}')"><i class="fa-solid fa-trash"></i></button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        // -------------------------------------------------------------
+        // SALVAMENTOS E MODAIS
+        // -------------------------------------------------------------
+        function abrirModalTransacao(tipo) {
+            document.getElementById('mt-titulo').innerText = tipo === 'receita' ? 'Nova Receita (Mês Atual)' : 'Nova Despesa (Mês Atual)';
+            document.getElementById('mt-tipo').value = tipo;
+            document.getElementById('mt-data').value = new Date().toISOString().split('T')[0];
+            
+            const select = document.getElementById('mt-categoria');
+            select.innerHTML = '';
+            (tipo === 'receita' ? categoriasReceita : categoriasDespesa).forEach(c => select.innerHTML += `<option value="${c}">${c}</option>`);
+            
+            document.getElementById('modal-transacao').style.display = 'flex';
+        }
+
+        function salvarTransacao(e) {
+            e.preventDefault();
+            const valor = parseFloat(document.getElementById('mt-valor').value.replace(',', '.'));
+            if(isNaN(valor) || valor <= 0) return alert("Valor inválido!");
+
+            transacoes.push({
+                id: Math.random().toString(36).substring(2, 9),
+                descricao: document.getElementById('mt-desc').value,
+                valor: valor,
+                data: document.getElementById('mt-data').value,
+                categoria: document.getElementById('mt-categoria').value,
+                tipo: document.getElementById('mt-tipo').value,
+                isFixo: false
+            });
+
+            localStorage.setItem('casa_transacoes_v2', JSON.stringify(transacoes));
+            fecharModais();
+            renderizarDashboard();
+            renderizarHistorico();
+        }
+
+        function abrirModalFixo() {
+            atualizarCategoriasFixas();
+            document.getElementById('modal-fixo').style.display = 'flex';
+        }
+
+        function atualizarCategoriasFixas() {
+            const tipo = document.getElementById('mf-tipo').value;
+            const select = document.getElementById('mf-categoria');
+            select.innerHTML = '';
+            (tipo === 'receita' ? categoriasReceita : categoriasDespesa).forEach(c => select.innerHTML += `<option value="${c}">${c}</option>`);
+        }
+
+        function salvarFixo(e) {
+            e.preventDefault();
+            const valor = parseFloat(document.getElementById('mf-valor').value.replace(',', '.'));
+            if(isNaN(valor) || valor <= 0) return alert("Valor inválido!");
+
+            const novoFixo = {
+                id: Math.random().toString(36).substring(2, 9),
+                descricao: document.getElementById('mf-desc').value,
+                valor: valor,
+                categoria: document.getElementById('mf-categoria').value,
+                tipo: document.getElementById('mf-tipo').value
+            };
+
+            fixos.push(novoFixo);
+            localStorage.setItem('casa_fixos_v2', JSON.stringify(fixos));
+            
+            // Opcional: Pergunta se já quer lançar no mês atual
+            if(confirm("Regra salva! Deseja gerar este lançamento no mês atual agora? (Recomendado se você ainda não lançou esse mês)")) {
+                const mesAtual = new Date().toISOString().substring(0, 7);
+                transacoes.push({ ...novoFixo, id: Math.random().toString(36).substring(2,9), data: `${mesAtual}-01`, isFixo: true });
+                localStorage.setItem('casa_transacoes_v2', JSON.stringify(transacoes));
+            }
+
+            fecharModais();
+            renderizarFixos();
+            renderizarDashboard();
+        }
+
+        function deletarTransacao(id) {
+            if(confirm("Apagar registro?")) {
+                transacoes = transacoes.filter(t => t.id !== id);
+                localStorage.setItem('casa_transacoes_v2', JSON.stringify(transacoes));
+                renderizarDashboard();
+                renderizarHistorico();
+            }
+        }
+
+        function deletarFixo(id) {
+            if(confirm("Remover dos lançamentos automáticos? Isso NÃO apagará os históricos antigos, apenas impedirá de gerar no próximo mês.")) {
+                fixos = fixos.filter(f => f.id !== id);
+                localStorage.setItem('casa_fixos_v2', JSON.stringify(fixos));
+                renderizarFixos();
+            }
+        }
+
+        function fecharModais() {
+            document.getElementById('modal-transacao').style.display = 'none';
+            document.getElementById('modal-fixo').style.display = 'none';
+            document.getElementById('mt-desc').value = ''; document.getElementById('mt-valor').value = '';
+            document.getElementById('mf-desc').value = ''; document.getElementById('mf-valor').value = '';
+        }
+    </script>
+</body>
+</html>
